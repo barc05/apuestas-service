@@ -61,6 +61,22 @@ class ResolverRequest(BaseModel):
     resultado: str = Field(description="local | empate | visita")
 
 
+@app.get("/livez", status_code=status.HTTP_200_OK)
+def liveness_probe():
+
+    return {"status": "alive"}
+
+@app.get("/readyz")
+def readiness_probe(response: Response):
+
+    try:
+        conn = get_db_connection()
+        conn.close()
+        return {"status": "ready"}
+    except Exception:
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        return {"status": "unhealthy"}
+
 # TODO (alumno): implementar las rutas de salud que usará Kubernetes:
 #   - liveness: ¿el proceso está vivo? (respuesta simple).
 #   - readiness: ¿está listo para recibir tráfico? Debe verificar la BD.
