@@ -61,21 +61,21 @@ class ResolverRequest(BaseModel):
     resultado: str = Field(description="local | empate | visita")
 
 
-@app.get("/livez", status_code=status.HTTP_200_OK)
-def liveness_probe():
+# ... Busca donde esté definida tu instancia de FastAPI (usualmente app = FastAPI()) ...
 
+@app.get("/livez")
+async def liveness():
     return {"status": "alive"}
 
 @app.get("/readyz")
-def readiness_probe(response: Response):
-
+async def readiness():
     try:
-        conn = get_db_connection()
-        conn.close()
+        with engine.connect() as connection:
+            connection.exec_driver_sql("SELECT 1")
         return {"status": "ready"}
-    except Exception:
-        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-        return {"status": "unhealthy"}
+    except Exception as e:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=503, detail=f"Database unavailable: {str(e)}")
 
 # TODO (alumno): implementar las rutas de salud que usará Kubernetes:
 #   - liveness: ¿el proceso está vivo? (respuesta simple).
