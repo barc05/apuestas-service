@@ -70,13 +70,14 @@ async def liveness():
 @app.get("/readyz")
 async def readiness():
     try:
+        from app.db import engine
         with engine.connect() as connection:
             connection.exec_driver_sql("SELECT 1")
         return {"status": "ready"}
     except Exception as e:
         from fastapi import HTTPException
         raise HTTPException(status_code=503, detail=f"Database unavailable: {str(e)}")
-
+    
 # TODO (alumno): implementar las rutas de salud que usará Kubernetes:
 #   - liveness: ¿el proceso está vivo? (respuesta simple).
 #   - readiness: ¿está listo para recibir tráfico? Debe verificar la BD.
