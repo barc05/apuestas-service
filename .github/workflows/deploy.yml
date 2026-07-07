@@ -25,32 +25,33 @@ jobs:
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
 
-    - name: Build, Tag, and Push Image to Amazon ECR
+    - name: Build, Tag and Push Image to Amazon ECR
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY_APUESTAS }} 
-        IMAGE_TAG: ${{ github.sha }}
       run: |
-        # Compilar usando el Dockerfile multi-stage y no-root
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:v1.0.0 \
-                     -t $ECR_REGISTRY/$ECR_REPOSITORY:latest \
-                     -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        VERSION_TAG="v1.0.0"
+        REPO_NAME="apuestas-service" 
         
-        # Subir simultáneamente las tres etiquetas exigidas
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:v1.0.0
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        export DOCKER_BUILDKIT=1
+        
+        docker build -t $ECR_REGISTRY/$REPO_NAME:${{ github.sha }} \
+                     -t $ECR_REGISTRY/$REPO_NAME:latest \
+                     -t $ECR_REGISTRY/$REPO_NAME:$VERSION_TAG .
+        
+        docker push $ECR_REGISTRY/$REPO_NAME:${{ github.sha }}
+        docker push $ECR_REGISTRY/$REPO_NAME:latest
+        docker push $ECR_REGISTRY/$REPO_NAME:$VERSION_TAG
 
-    - name: Update Kubeconfig and Deploy to EKS
-      env:
-        EKS_CLUSTER: ${{ secrets.EKS_CLUSTER }}
-        AWS_REGION: ${{ secrets.AWS_REGION }}
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY_APUESTAS }}
-        IMAGE_TAG: ${{ github.sha }}
+    - name: Update Kubeconfig for EKS
       run: |
-        aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER
+        aws eks update-kubeconfig --region ${{ secrets.AWS_REGION }} --name vidalcasino-cluster
+
+    - name: Deploy Manifests to EKS Cluster
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+      run: |
+        sed -i "s/\${AWS_ACCOUNT_ID}/$ECR_REGISTRY/g" deployment.yaml
         
-        sed -i "s|\${AWS_ACCOUNT_ID}.dkr.ecr.\${AWS_REGION}.amazonaws.com/apuestas-service:latest|$ECR_REGISTRY/$RF_REPOSITORY:$IMAGE_TAG|g" k8s-deployment.yaml
+        kubectl apply -f deployment.yaml
         
-        kubectl apply -f k8s-deployment.yaml
+        kubectl rollout restart deployment/apuestas-service
