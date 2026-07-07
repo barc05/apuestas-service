@@ -31,7 +31,7 @@ jobs:
       run: |
         VERSION_TAG="v1.0.0"
         REPO_NAME="apuestas-service" 
-        
+
         export DOCKER_BUILDKIT=1
         
         docker build -t $ECR_REGISTRY/$REPO_NAME:${{ github.sha }} \
@@ -50,7 +50,7 @@ jobs:
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
       run: |
-        sed -i "s/\${AWS_ACCOUNT_ID}/$ECR_REGISTRY/g" deployment.yaml
+        sed -i "s|IMAGEN_MUTABLE|$ECR_REGISTRY/$REPO_NAME:${{ github.sha }}|g" deployment.yaml
         
         kubectl apply -f deployment.yaml
         

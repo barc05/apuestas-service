@@ -16,8 +16,7 @@ spec:
     spec:
       containers:
       - name: apuestas-service
-        image: ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/apuestas-service:latest
-        imagePullPolicy: Always
+        image: IMAGEN_MUTABLE
         ports:
         - containerPort: 8005
         envFrom:
